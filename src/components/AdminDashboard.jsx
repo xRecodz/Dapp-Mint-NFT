@@ -17,7 +17,6 @@ export default function AdminDashboard({ account }) {
   useEffect(() => {
     async function load() {
       if (!window.ethereum || !account) {
-        // reset kalau disconnect
         setIsOwner(false);
         setPublicMintOpen(false);
         setWhitelistMintOpen(false);
@@ -28,10 +27,17 @@ export default function AdminDashboard({ account }) {
 
       const provider = new ethers.BrowserProvider(window.ethereum);
       const signer = await provider.getSigner();
-      const contract = new ethers.Contract(contractAddress, abi, signer);
+      const contract = new ethers.Contract(contractAddress, abi.abi, signer);
 
       const owner = await contract.owner();
-      setIsOwner(owner.toLowerCase() === account.toLowerCase());
+      const isContractOwner = owner.toLowerCase() === account.toLowerCase();
+
+      // 🔍 Logging untuk debug
+      console.log("Contract Owner:", owner);
+      console.log("Your Wallet:", account);
+      console.log("isOwner?", isContractOwner);
+
+      setIsOwner(isContractOwner);
 
       setPublicMintOpen(await contract.publicMintOpen());
       setWhitelistMintOpen(await contract.whitelistMintOpen());
@@ -47,7 +53,7 @@ export default function AdminDashboard({ account }) {
   async function togglePublicMint() {
     const provider = new ethers.BrowserProvider(window.ethereum);
     const signer = await provider.getSigner();
-    const contract = new ethers.Contract(contractAddress, abi, signer);
+    const contract = new ethers.Contract(contractAddress, abi.abi, signer);
     const tx = await contract.togglePublicMint();
     await tx.wait();
     setPublicMintOpen(await contract.publicMintOpen());
@@ -56,7 +62,7 @@ export default function AdminDashboard({ account }) {
   async function toggleWhitelistMint() {
     const provider = new ethers.BrowserProvider(window.ethereum);
     const signer = await provider.getSigner();
-    const contract = new ethers.Contract(contractAddress, abi, signer);
+    const contract = new ethers.Contract(contractAddress, abi.abi, signer);
     const tx = await contract.toggleWhitelistMint();
     await tx.wait();
     setWhitelistMintOpen(await contract.whitelistMintOpen());
@@ -65,7 +71,7 @@ export default function AdminDashboard({ account }) {
   async function addWhitelist() {
     const provider = new ethers.BrowserProvider(window.ethereum);
     const signer = await provider.getSigner();
-    const contract = new ethers.Contract(contractAddress, abi, signer);
+    const contract = new ethers.Contract(contractAddress, abi.abi, signer);
     const tx = await contract.addToWhitelist(whitelistAddress);
     await tx.wait();
     alert(`${whitelistAddress} ✅ added to whitelist`);
@@ -74,7 +80,7 @@ export default function AdminDashboard({ account }) {
   async function removeWhitelist() {
     const provider = new ethers.BrowserProvider(window.ethereum);
     const signer = await provider.getSigner();
-    const contract = new ethers.Contract(contractAddress, abi, signer);
+    const contract = new ethers.Contract(contractAddress, abi.abi, signer);
     const tx = await contract.removeFromWhitelist(whitelistAddress);
     await tx.wait();
     alert(`${whitelistAddress} ❌ removed from whitelist`);
@@ -151,10 +157,12 @@ export default function AdminDashboard({ account }) {
               Max Supply: <span className="font-bold">{maxSupply}</span>
             </p>
             <p className="text-lg mb-2">
-              Minted: <span className="font-bold text-green-400">{totalMinted}</span>
+              Minted:{" "}
+              <span className="font-bold text-green-400">{totalMinted}</span>
             </p>
             <p className="text-lg">
-              Remaining: <span className="font-bold text-yellow-400">{remaining}</span>
+              Remaining:{" "}
+              <span className="font-bold text-yellow-400">{remaining}</span>
             </p>
           </div>
         </div>
