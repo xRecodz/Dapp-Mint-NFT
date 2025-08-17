@@ -5,13 +5,13 @@ import abi from "./abi.json";
 
 const contractAddress = import.meta.env.VITE_CONTRACT_ADDRESS;
 
-export default function MintPage({ account }) {
+export default function MintPage({ account, refreshSupply }) {
   const [mintAmount, setMintAmount] = useState(1);
   const [status, setStatus] = useState("");
 
   useEffect(() => {
     if (!account) {
-      setStatus("");   // reset status kalau disconnect
+      setStatus(""); // reset status kalau disconnect
       setMintAmount(1);
     }
   }, [account]);
@@ -20,19 +20,37 @@ export default function MintPage({ account }) {
     try {
       if (!window.ethereum) return alert("⚠️ Please install MetaMask!");
       if (!account) return alert("⚠️ Please connect wallet first!");
+
       const provider = new ethers.BrowserProvider(window.ethereum);
       const signer = await provider.getSigner();
-      const contract = new ethers.Contract(contractAddress, abi, signer);
+      const contract = new ethers.Contract(contractAddress, abi.abi, signer);
 
+      // Ambil harga per NFT dari kontrak
       const price = await contract.MINT_PRICE();
       const totalCost = price * BigInt(mintAmount);
 
       setStatus("⏳ Transaction pending...");
+
+      // Eksekusi mint
       const tx = await contract.mint(mintAmount, { value: totalCost });
       await tx.wait();
+
       setStatus(`✅ Mint success! TX Hash: ${tx.hash}`);
+
+      // 🔥 Update supply info di navbar
+      if (refreshSupply) {
+        await refreshSupply();
+      }
     } catch (error) {
-      setStatus(`❌ Error: ${error.message}`);
+      console.error("Mint error:", error);
+      // Tangani error lebih jelas
+      if (error?.info?.error?.message) {
+        setStatus(`❌ Error: ${error.info.error.message}`);
+      } else if (error.message) {
+        setStatus(`❌ Error: ${error.message}`);
+      } else {
+        setStatus("❌ Error: Unknown error");
+      }
     }
   }
 
@@ -72,7 +90,7 @@ export default function MintPage({ account }) {
           type="number"
           min="1"
           value={mintAmount}
-          onChange={(e) => setMintAmount(parseInt(e.target.value))}
+          onChange={(e) => setMintAmount(Math.max(1, parseInt(e.target.value)))}
           className="w-20 text-center p-2 rounded-lg text-black"
           disabled={!account}
         />
@@ -85,7 +103,11 @@ export default function MintPage({ account }) {
         </button>
       </div>
 
-      {status && <p className="mt-2 text-sm text-gray-300">{status}</p>}
+      {status && (
+        <p className="mt-2 text-sm px-3 py-2 bg-gray-800 rounded-lg border border-gray-700 text-gray-300">
+          {status}
+        </p>
+      )}
     </div>
   );
 }
