@@ -12,26 +12,35 @@ export default function App() {
   const [isOwner, setIsOwner] = useState(false);
   const [dropdownOpen, setDropdownOpen] = useState(false);
 
+  // 🔥 State tambahan untuk supply
+  const [totalSupply, setTotalSupply] = useState(0);
+  const [maxSupply, setMaxSupply] = useState(0);
+
   // Connect wallet
   async function connectWallet() {
     try {
       if (!window.ethereum) return alert("⚠️ Please install MetaMask!");
 
-      // ✅ Pakai native MetaMask request
       const accounts = await window.ethereum.request({
         method: "eth_requestAccounts",
       });
       const addr = accounts[0];
       setAccount(addr);
 
-      // ✅ Baru bungkus ke ethers provider
       const provider = new ethers.BrowserProvider(window.ethereum);
       const signer = await provider.getSigner();
 
-      // cek apakah owner
-      const contract = new ethers.Contract(contractAddress, abi, signer);
+      const contract = new ethers.Contract(contractAddress, abi.abi, signer);
+
+      // ✅ cek owner
       const owner = await contract.owner();
       setIsOwner(owner.toLowerCase() === addr.toLowerCase());
+
+      // ✅ ambil supply info
+      const ts = await contract.totalSupply();
+      const ms = await contract.MAX_SUPPLY();
+      setTotalSupply(Number(ts));
+      setMaxSupply(Number(ms));
     } catch (error) {
       console.error("Wallet connection failed:", error);
       alert("❌ Failed to connect wallet: " + (error.message || error.code));
@@ -43,10 +52,12 @@ export default function App() {
     setAccount(null);
     setIsOwner(false);
     setDropdownOpen(false);
-    setActiveTab("mint"); // fallback ke halaman mint
+    setActiveTab("mint");
+    setTotalSupply(0);
+    setMaxSupply(0);
   }
 
-  // Auto check kalau metamask ganti account
+  // Auto update kalau metamask ganti account / chain
   useEffect(() => {
     if (window.ethereum) {
       window.ethereum.on("accountsChanged", (accounts) => {
@@ -60,18 +71,46 @@ export default function App() {
 
       window.ethereum.on("chainChanged", (chainId) => {
         console.log("Chain changed to", chainId);
+        window.location.reload();
       });
     }
   }, []);
+
+  // Fungsi untuk refresh supply manual
+  async function refreshSupply() {
+    try {
+      const provider = new ethers.BrowserProvider(window.ethereum);
+      const contract = new ethers.Contract(contractAddress, abi.abi, provider);
+      const ts = await contract.totalSupply();
+      const ms = await contract.MAX_SUPPLY();
+      setTotalSupply(Number(ts));
+      setMaxSupply(Number(ms));
+    } catch (e) {
+      console.error("Failed to fetch supply:", e);
+    }
+  }
 
   return (
     <div className="min-h-screen flex flex-col bg-gradient-to-b from-gray-900 via-gray-800 to-black text-white">
       {/* Navbar */}
       <header className="sticky top-0 z-50 bg-black/70 backdrop-blur border-b border-gray-700">
         <div className="w-full max-w-7xl mx-auto flex items-center justify-between px-6 py-4">
-          <h1 className="text-2xl font-extrabold text-transparent bg-clip-text bg-gradient-to-r from-blue-400 to-purple-500">
-            🚀 MyNFT Project
-          </h1>
+          <div className="flex items-center gap-4">
+            <h1 className="text-2xl font-extrabold text-transparent bg-clip-text bg-gradient-to-r from-blue-400 to-purple-500">
+              🚀 MyNFT Project
+            </h1>
+
+            {/* ✅ Info supply */}
+            {maxSupply > 0 && (
+              <button
+                onClick={refreshSupply}
+                className="text-sm bg-gray-800 px-3 py-1 rounded-lg border border-gray-700 hover:bg-gray-700 transition"
+              >
+                Supply: {totalSupply} / {maxSupply}
+              </button>
+            )}
+          </div>
+
           <nav className="flex gap-6 items-center relative">
             <button
               onClick={() => setActiveTab("mint")}
@@ -82,7 +121,6 @@ export default function App() {
               Mint NFT
             </button>
 
-            {/* Hanya tampil kalau wallet connect dan dia owner */}
             {isOwner && (
               <button
                 onClick={() => setActiveTab("admin")}
@@ -138,7 +176,7 @@ export default function App() {
       <main className="flex-1 flex justify-center items-center">
         <div className="w-[1900px] h-[900px] flex justify-center items-center">
           {activeTab === "mint" ? (
-            <MintPage account={account} />
+            <MintPage account={account} refreshSupply={refreshSupply} />
           ) : isOwner ? (
             <AdminDashboard account={account} />
           ) : (
