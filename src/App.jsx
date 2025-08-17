@@ -14,33 +14,30 @@ export default function App() {
 
   // Connect wallet
   async function connectWallet() {
-  try {
-    if (!window.ethereum) {
-      alert("⚠️ Please install MetaMask!");
-      return;
+    try {
+      if (!window.ethereum) return alert("⚠️ Please install MetaMask!");
+
+      // ✅ Pakai native MetaMask request
+      const accounts = await window.ethereum.request({
+        method: "eth_requestAccounts",
+      });
+      const addr = accounts[0];
+      setAccount(addr);
+
+      // ✅ Baru bungkus ke ethers provider
+      const provider = new ethers.BrowserProvider(window.ethereum);
+      const signer = await provider.getSigner();
+
+      // cek apakah owner
+      const contract = new ethers.Contract(contractAddress, abi, signer);
+      const owner = await contract.owner();
+      setIsOwner(owner.toLowerCase() === addr.toLowerCase());
+    } catch (error) {
+      console.error("Wallet connection failed:", error);
+      alert("❌ Failed to connect wallet: " + (error.message || error.code));
     }
-
-    // Minta akses ke wallet
-    const accounts = await window.ethereum.request({
-      method: "eth_requestAccounts",
-    });
-    const addr = accounts[0];
-    setAccount(addr);
-
-    // Masukkan ke ethers provider
-    const provider = new ethers.BrowserProvider(window.ethereum);
-    const signer = await provider.getSigner();
-
-    // Cek owner kontrak
-    const contract = new ethers.Contract(contractAddress, abi, signer);
-    const owner = await contract.owner();
-    setIsOwner(owner.toLowerCase() === addr.toLowerCase());
-  } catch (error) {
-    console.error("Wallet connection failed:", error);
-    alert("❌ Failed to connect wallet: " + (error.message || error.code));
   }
-}
-  
+
   // Disconnect wallet (simply clear state)
   function disconnectWallet() {
     setAccount(null);
@@ -59,6 +56,10 @@ export default function App() {
           setAccount(accounts[0]);
           connectWallet();
         }
+      });
+
+      window.ethereum.on("chainChanged", (chainId) => {
+        console.log("Chain changed to", chainId);
       });
     }
   }, []);
