@@ -14,23 +14,26 @@ export default function App() {
 
   // Connect wallet
   async function connectWallet() {
-    try {
-      if (!window.ethereum) return alert("⚠️ Please install MetaMask!");
-      const provider = new ethers.BrowserProvider(window.ethereum);
-      const accounts = await provider.send("eth_requestAccounts", []);
-      const addr = accounts[0];
-      setAccount(addr);
-
-      // cek apakah owner
-      const signer = await provider.getSigner();
-      const contract = new ethers.Contract(contractAddress, abi, signer);
-      const owner = await contract.owner();
-      setIsOwner(owner.toLowerCase() === addr.toLowerCase());
-    } catch (error) {
-      console.error(error);
-      alert("❌ Failed to connect wallet");
+  try {
+    if (!window.ethereum) {
+      alert("⚠️ Please install MetaMask!");
+      return;
     }
+    const provider = new ethers.BrowserProvider(window.ethereum);
+    const accounts = await provider.send("eth_requestAccounts", []);
+    const addr = accounts[0];
+    setAccount(addr);
+
+    // cek owner
+    const signer = await provider.getSigner();
+    const contract = new ethers.Contract(contractAddress, abi, signer);
+    const owner = await contract.owner();
+    setIsOwner(owner.toLowerCase() === addr.toLowerCase());
+  } catch (error) {
+    console.error("Wallet connection failed:", error);
+    alert("❌ Failed to connect wallet: " + error.message);
   }
+}
 
   // Disconnect wallet (simply clear state)
   function disconnectWallet() {
