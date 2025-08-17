@@ -19,22 +19,28 @@ export default function App() {
       alert("⚠️ Please install MetaMask!");
       return;
     }
-    const provider = new ethers.BrowserProvider(window.ethereum);
-    const accounts = await provider.send("eth_requestAccounts", []);
+
+    // Minta akses ke wallet
+    const accounts = await window.ethereum.request({
+      method: "eth_requestAccounts",
+    });
     const addr = accounts[0];
     setAccount(addr);
 
-    // cek owner
+    // Masukkan ke ethers provider
+    const provider = new ethers.BrowserProvider(window.ethereum);
     const signer = await provider.getSigner();
+
+    // Cek owner kontrak
     const contract = new ethers.Contract(contractAddress, abi, signer);
     const owner = await contract.owner();
     setIsOwner(owner.toLowerCase() === addr.toLowerCase());
   } catch (error) {
     console.error("Wallet connection failed:", error);
-    alert("❌ Failed to connect wallet: " + error.message);
+    alert("❌ Failed to connect wallet: " + (error.message || error.code));
   }
 }
-
+  
   // Disconnect wallet (simply clear state)
   function disconnectWallet() {
     setAccount(null);
